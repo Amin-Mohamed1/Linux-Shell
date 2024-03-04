@@ -1,0 +1,5 @@
+Child process 26083 exited with status code 0
+Child process 26604 exited with status code 0
+Child process 27467 exited with status code 0
+Child process 27780 exited with status code 0
+Child process 32572 exited with status code 0
