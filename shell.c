@@ -172,9 +172,9 @@ char* remove_starting_trailing_spaces(char *command) {
 void read_command (char command[]) {
     char cwd[MAX_LENGTH];
     getcwd(cwd, sizeof(cwd));
-    printf(BLUE "%s", cwd);
-    printf(MAGENTA "$");
-    printf(GREEN " ");
+    printf(MAGENTA "%s", cwd);
+    printf(GREEN "$-");
+    printf(BLUE " ");
     fgets(command, MAX_LENGTH, stdin);
     command[strcspn(command, "\n")] = '\0';
 }
@@ -242,22 +242,21 @@ void parse_command(char command[], char* parameters[]) {
         }
         command = replace_var(command, i);
     }
+
     char *delimiter = " ";
     int arg_count = 0;
-    // Duplicate the command string
-    char * dup_str = strdup(command);
-    // Tokenize the command string
-    char *token = strtok(dup_str, delimiter);
+
+    char *token = strtok(command, delimiter);
     char *first_token = strdup(token);
     // Check if the first token is a built-in command
     if (strcmp(first_token, "cd") == 0 
         || strcmp(first_token, "echo") == 0 
         || strcmp(first_token, "export") == 0) {
+            
         while (token != NULL && arg_count < MAX_LENGTH) {
             parameters[arg_count++] = strdup(token);
             token = strtok(NULL, "");
         }
-
     } 
     else {
         while (token != NULL && arg_count < MAX_LENGTH) {
@@ -283,6 +282,11 @@ void shell () {
         read_command(command);
         strcpy(command, remove_starting_trailing_spaces(command));
         
+
+        if(strlen(command) == 0){
+            continue;
+        }
+
         /* detected that it is background */
         if (command[strlen(command) - 1] == '&') {
             background = 1;
@@ -333,7 +337,6 @@ int main() {
 
     //to home directory
     setup_environment();
-
     // begin reading & executing commands in terminal 
     shell();
 
