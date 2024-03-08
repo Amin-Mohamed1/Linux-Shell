@@ -7,21 +7,27 @@
 
 #define MAX_LENGTH 1000
 #define LOG_FILE "/home/amencsed/Desktop/UbuntuShell/logfile.txt"
-#define GREEN "\x1b[32m"
-#define BLUE "\x1b[34m"
-#define MAGENTA "\x1b[35m"
-#define RED "\x1b[31m"
-FILE* file_logger;
-/* 
-   command type can either be built in command 
-   or normal command or exit command 
-*/
-typedef enum {
-    built_in_shell_command,
-    normal_command,
-    exit_command_shell
-} command_type;
 
+#define RESET "\033[0m"
+#define BLACK "\033[30m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN "\033[36m"
+#define WHITE "\033[37m"
+
+
+// for dealing with the logfile
+FILE* file_logger;
+
+/*  command type can either be built in command or normal command or exit command */
+typedef enum {
+    built_in_shell_command, normal_command, exit_command_shell
+}command_type;
+
+//in file
 /* logging the child process the logging file*/
 void write_to_log_file(pid_t pid, int status) {
     file_logger = fopen(LOG_FILE, "a");
@@ -32,13 +38,21 @@ void write_to_log_file(pid_t pid, int status) {
         fclose(file_logger);
     }
 }
+
 /* 
    the function to reap zombie child processes
    waitpid() suspends the calling process 
    until the system gets status information 
    on the child process and using pooling mode WNOHANG
-   as it takes large amount of time to suspend parent 
-   compared to time for child to terminate.
+   
+   pid < -1 : means wait for any process with group id = abs(pid)
+   pid = 0  : means wait for any process with group id = calling id
+   pid = -1 : means wait for any process
+   pid > 0  : means wait for that specific process with that id
+
+   WNOHANG   : means terminate the child process immediately (non blocking mode)
+   WUNTRACED : means return the status info of child process only if child terminates (blocking mode)
+
 */
 void reap_child_zombie() {
     int status;
@@ -47,6 +61,7 @@ void reap_child_zombie() {
         write_to_log_file(pid, status);
     }
 }
+
 /* signal handler for parent */
 void on_child_exit () {
     reap_child_zombie();
@@ -58,29 +73,20 @@ void setup_environment(){
 }
 
 /* execute cd command*/
-void cd (char* command_parameters[]) {
-    char path[MAX_LENGTH]; 
-    char *ptr; 
-    int k = 0;
-
-    if(command_parameters[1] == NULL || strcmp(command_parameters[1], "~") == 0) {
+void cd(char* command_parameters[]) {
+    char *path;
+    if (command_parameters[1] == NULL) {
         chdir(getenv("HOME"));
         return;
     }
-
-    else if(*command_parameters[1] == '~') {
-        ptr = getenv("HOME");
-        for (int i = 0; i < strlen(ptr); i++) {
-            path[k++] = ptr[i]; // coping  the path
-        }
-        path[k] = '\0';
-        command_parameters[1]++;
-        strcat(path, command_parameters[1]);
-
+    if (*command_parameters[1] == '~') {
+        path = malloc(strlen(getenv("HOME")) + strlen(command_parameters[1] + 1) + 1);
+        strcpy(path, getenv("HOME"));
+        strcat(path, command_parameters[1] + 1);
         if (chdir(path) != 0) {
             perror(RED "cd");
         }
-    }
+    } 
     else {
         if (chdir(command_parameters[1]) != 0) {
             perror(RED "cd");
@@ -88,10 +94,10 @@ void cd (char* command_parameters[]) {
     }
 }
 
-/* export command */
+
+/* execute export command */
 void export (char command[]) {
     char *name, *value;
-
     name = strsep(&command, "="); // = is the delimter
     value = strdup(command);
 
@@ -113,7 +119,7 @@ void echo(char command[]) {
     printf("%s\n", command);
 }
 
-// function for builtin commands: cd, echo, export
+// execute built-in commands: cd, echo, export
 void execute_shell_bultin(char *parameters[]) {
     char *command = parameters[0];
     if (strcmp(command, "cd") == 0) {
@@ -138,7 +144,7 @@ void execute_command(char *parameters[], int background) {
     else if (pid == 0) {
         if (background) {
             printf("process: %d\n", getpid());
-            sleep(10);
+            //sleep(10);
         }
         execvp(parameters[0], parameters);
         printf(RED "%s: command not found\n", parameters[0]);
@@ -173,12 +179,11 @@ void read_command (char command[]) {
     char cwd[MAX_LENGTH];
     getcwd(cwd, sizeof(cwd));
     printf(MAGENTA "%s", cwd);
-    printf(GREEN "$-");
+    printf(YELLOW "$");
     printf(BLUE " ");
     fgets(command, MAX_LENGTH, stdin);
     command[strcspn(command, "\n")] = '\0';
 }
-
 
 /* replace var by its value */
 char* replace_var(char* input_command, int foundAt) {
@@ -272,48 +277,37 @@ void shell () {
     int command_exit = 0;
     do {
         char command [MAX_LENGTH] = {};
-        char *parameters [MAX_LENGTH] = {}; // array of pointers
+        char *parameters [MAX_LENGTH] = {};
         command_type cmd_type;
         int background = 0;
-        /* 
-           read the input and 
-           removed the un-necessary spaces
-        */
+        /* read the input and removed the un-necessary spaces*/
         read_command(command);
         strcpy(command, remove_starting_trailing_spaces(command));
-        
-
         if(strlen(command) == 0){
             continue;
         }
-
         /* detected that it is background */
         if (command[strlen(command) - 1] == '&') {
             background = 1;
             command[strlen(command) - 1] = '\0';
             remove_starting_trailing_spaces(command);
         }
-
         parse_command(command, parameters);
-        
         /* detected it is exit command */
         if (strcmp(parameters[0], "exit") == 0) {
             command_exit = 1;
             cmd_type = exit_command_shell;
         }
-
         /* detected it is built in shell command */
         else if (strcmp(parameters[0], "cd") == 0 
                 || strcmp(parameters[0], "echo") == 0 
                 || strcmp(parameters[0], "export") == 0) {
             cmd_type = built_in_shell_command;
         }
-
         /* normal command detected */
         else {
             cmd_type = normal_command;
         }
-
         switch (cmd_type) {
             case built_in_shell_command:
                 execute_shell_bultin(parameters);
@@ -328,10 +322,14 @@ void shell () {
 }
 
 int main() {
+
+    printf(GREEN "                   ========================================================\n");
+    printf(GREEN "                   ================ WELCOME TO MY SHELL !! ================\n");
+    printf(GREEN "                   ========================================================\n");
+    
     /* 
        this signal informs the parent process
-       to clean up the child zombie process via 
-       wait system call. 
+       to clean up the child process
     */
     signal(SIGCHLD, on_child_exit);
 
