@@ -32,3 +32,6 @@ https://github.com/WorldisAmen/Linux-Shell-OS/assets/145727573/9018cdb4-736a-4f0
 
 https://github.com/WorldisAmen/Linux-Shell-OS/assets/145727573/04cde82d-6e9d-46f2-99b3-36b8ec3e204a
 
+
+
+![image](https://github.com/WorldisAmen/Linux-Shell-OS/assets/145727573/b69946f3-f921-4484-9990-5e28afd8594d)
